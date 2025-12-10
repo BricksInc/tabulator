@@ -63,4 +63,65 @@ export default class Helpers{
 
 		return clone;
 	}
+
+	static getTransformScaleFactors(element){
+		var scaleX = 1, scaleY = 1;
+		var current = element;
+
+		while (current && current !== document.body) {
+			var style = window.getComputedStyle(current);
+			var transform = style.transform;
+
+			if (transform && transform !== 'none') {
+				var matrix = transform.match(/matrix\(([^)]+)\)/);
+				var matrix3d = transform.match(/matrix3d\(([^)]+)\)/);
+
+				if (matrix) {
+					var m = matrix[1].split(',').map(parseFloat);
+					scaleX *= m[0] || 1;
+					scaleY *= m[3] || 1;
+				} else if (matrix3d) {
+					var m3d = matrix3d[1].split(',').map(parseFloat);
+					scaleX *= m3d[0] || 1;
+					scaleY *= m3d[5] || 1;
+				}
+			}
+			current = current.parentElement;
+		}
+
+		return { x: scaleX, y: scaleY };
+	}
+
+	static getCorrectedDimensions(element, dimension){
+		if (!element) return 0;
+		var rect = element.getBoundingClientRect();
+		var scaleFactors = this.getTransformScaleFactors(element);
+
+		switch(dimension) {
+			case 'height':
+				return Math.ceil(rect.height / scaleFactors.y);
+			case 'width':
+				return Math.ceil(rect.width / scaleFactors.x);
+			default:
+				return rect;
+		}
+	}
+
+	static getCorrectedRect(element){
+		if (!element) return { top: 0, bottom: 0, left: 0, right: 0, width: 0, height: 0, x: 0, y: 0 };
+
+		var rect = element.getBoundingClientRect();
+		var scaleFactors = this.getTransformScaleFactors(element);
+
+		return {
+			top: rect.top,
+			bottom: rect.top + rect.height / scaleFactors.y,
+			left: rect.left,
+			right: rect.left + rect.width / scaleFactors.x,
+			width: rect.width / scaleFactors.x,
+			height: rect.height / scaleFactors.y,
+			x: rect.x / scaleFactors.x,
+			y: rect.y / scaleFactors.y
+		};
+	}
 }
