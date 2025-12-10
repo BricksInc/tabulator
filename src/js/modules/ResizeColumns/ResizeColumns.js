@@ -177,6 +177,10 @@ export default class ResizeColumns extends Module{
 			
 			config.handleEl = handle;
 			
+			if(type === "cell"){
+				handle.style.height = component.row.heightStyled;
+			}
+
 			if(element.parentNode && column.visible){
 				element.after(handle);			
 			}
