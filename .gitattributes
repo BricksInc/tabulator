@@ -1,0 +1,5 @@
+* text=auto
+
+# Enforce LF for dist files to ensure consistent builds across OS
+dist/** text eol=lf
+

@@ -212,6 +212,134 @@
 		}
 	}
 
+	class Helpers{
+
+		static elVisible(el){
+			return !(el.offsetWidth <= 0 && el.offsetHeight <= 0);
+		}
+
+		static elOffset(el){
+			var box = el.getBoundingClientRect();
+
+			return {
+				top: box.top + window.pageYOffset - document.documentElement.clientTop,
+				left: box.left + window.pageXOffset - document.documentElement.clientLeft
+			};
+		}
+
+		static retrieveNestedData(separator, field, data){
+			var structure = separator ? field.split(separator) : [field],
+			length = structure.length,
+			output;
+
+			for(let i = 0; i < length; i++){
+
+				data = data[structure[i]];
+
+				output = data;
+
+				if(!data){
+					break;
+				}
+			}
+
+			return output;
+		}
+
+		static deepClone(obj, clone, list = []){
+			var objectProto = {}.__proto__,
+			arrayProto = [].__proto__;
+
+			if (!clone){
+				clone = Object.assign(Array.isArray(obj) ? [] : {}, obj);
+			}
+
+			for(var i in obj) {
+				let subject = obj[i],
+				match, copy;
+
+				if(subject != null && typeof subject === "object" && (subject.__proto__ === objectProto || subject.__proto__ === arrayProto)){
+					match = list.findIndex((item) => {
+						return item.subject === subject;
+					});
+
+					if(match > -1){
+						clone[i] = list[match].copy;
+					}else {
+						copy = Object.assign(Array.isArray(subject) ? [] : {}, subject);
+
+						list.unshift({subject, copy});
+
+						clone[i] = this.deepClone(subject, copy, list);
+					}
+				}
+			}
+
+			return clone;
+		}
+
+		static getTransformScaleFactors(element){
+			var scaleX = 1, scaleY = 1;
+			var current = element;
+
+			while (current && current !== document.body) {
+				var style = window.getComputedStyle(current);
+				var transform = style.transform;
+
+				if (transform && transform !== 'none') {
+					var matrix = transform.match(/matrix\(([^)]+)\)/);
+					var matrix3d = transform.match(/matrix3d\(([^)]+)\)/);
+
+					if (matrix) {
+						var m = matrix[1].split(',').map(parseFloat);
+						scaleX *= m[0] || 1;
+						scaleY *= m[3] || 1;
+					} else if (matrix3d) {
+						var m3d = matrix3d[1].split(',').map(parseFloat);
+						scaleX *= m3d[0] || 1;
+						scaleY *= m3d[5] || 1;
+					}
+				}
+				current = current.parentElement;
+			}
+
+			return { x: scaleX, y: scaleY };
+		}
+
+		static getCorrectedDimensions(element, dimension){
+			if (!element) return 0;
+			var rect = element.getBoundingClientRect();
+			var scaleFactors = this.getTransformScaleFactors(element);
+
+			switch(dimension) {
+				case 'height':
+					return Math.ceil(rect.height / scaleFactors.y);
+				case 'width':
+					return Math.ceil(rect.width / scaleFactors.x);
+				default:
+					return rect;
+			}
+		}
+
+		static getCorrectedRect(element){
+			if (!element) return { top: 0, bottom: 0, left: 0, right: 0, width: 0, height: 0, x: 0, y: 0 };
+
+			var rect = element.getBoundingClientRect();
+			var scaleFactors = this.getTransformScaleFactors(element);
+
+			return {
+				top: rect.top,
+				bottom: rect.top + rect.height / scaleFactors.y,
+				left: rect.left,
+				right: rect.left + rect.width / scaleFactors.x,
+				width: rect.width / scaleFactors.x,
+				height: rect.height / scaleFactors.y,
+				x: rect.x / scaleFactors.x,
+				y: rect.y / scaleFactors.y
+			};
+		}
+	}
+
 	//public column object
 	class ColumnComponent {
 		constructor (column){
@@ -1506,7 +1634,7 @@
 		}
 		
 		getHeight(){
-			return Math.ceil(this.element.getBoundingClientRect().height);
+			return Helpers.getCorrectedDimensions(this.element, "height");
 		}
 		
 		setMinWidth(minWidth){
@@ -1730,73 +1858,6 @@
 		
 		getParentComponent(){
 			return this.parent instanceof Column ? this.parent.getComponent() : false;
-		}
-	}
-
-	class Helpers{
-
-		static elVisible(el){
-			return !(el.offsetWidth <= 0 && el.offsetHeight <= 0);
-		}
-
-		static elOffset(el){
-			var box = el.getBoundingClientRect();
-
-			return {
-				top: box.top + window.pageYOffset - document.documentElement.clientTop,
-				left: box.left + window.pageXOffset - document.documentElement.clientLeft
-			};
-		}
-
-		static retrieveNestedData(separator, field, data){
-			var structure = separator ? field.split(separator) : [field],
-			length = structure.length,
-			output;
-
-			for(let i = 0; i < length; i++){
-
-				data = data[structure[i]];
-
-				output = data;
-
-				if(!data){
-					break;
-				}
-			}
-
-			return output;
-		}
-
-		static deepClone(obj, clone, list = []){
-			var objectProto = {}.__proto__,
-			arrayProto = [].__proto__;
-
-			if (!clone){
-				clone = Object.assign(Array.isArray(obj) ? [] : {}, obj);
-			}
-
-			for(var i in obj) {
-				let subject = obj[i],
-				match, copy;
-
-				if(subject != null && typeof subject === "object" && (subject.__proto__ === objectProto || subject.__proto__ === arrayProto)){
-					match = list.findIndex((item) => {
-						return item.subject === subject;
-					});
-
-					if(match > -1){
-						clone[i] = list[match].copy;
-					}else {
-						copy = Object.assign(Array.isArray(subject) ? [] : {}, subject);
-
-						list.unshift({subject, copy});
-
-						clone[i] = this.deepClone(subject, copy, list);
-					}
-				}
-			}
-
-			return clone;
 		}
 	}
 
@@ -5782,7 +5843,9 @@
 			let resized = false;
 			
 			if(this.renderer.verticalFillMode === "fill"){
-				let otherHeight =  Math.floor(this.table.columnManager.getElement().getBoundingClientRect().height + (this.table.footerManager && this.table.footerManager.active && !this.table.footerManager.external ? this.table.footerManager.getElement().getBoundingClientRect().height : 0));
+				let columnHeight = Helpers.getCorrectedDimensions(this.table.columnManager.getElement(), 'height');
+				let footerHeight = (this.table.footerManager && this.table.footerManager.active && !this.table.footerManager.external) ? Helpers.getCorrectedDimensions(this.table.footerManager.getElement(), 'height') : 0;
+				let otherHeight = Math.floor(columnHeight + footerHeight);
 				
 				if(this.fixedHeight){
 					minHeight = isNaN(this.table.options.minHeight) ? this.table.options.minHeight : this.table.options.minHeight + "px";
@@ -5803,10 +5866,14 @@
 				//check if the table has changed size when dealing with variable height tables
 				if(!this.fixedHeight && initialHeight != this.element.clientHeight){
 					resized = true;
-					if(this.subscribed("table-resize")){
-						this.dispatch("table-resize");
-					}else {
-						this.redraw();
+					if(!this.redrawing){ // prevent recursive redraws		
+						this.redrawing = true;
+						if(this.subscribed("table-resize")){
+							this.dispatch("table-resize");
+						}else {
+							this.redraw();
+						}
+						this.redrawing = false;
 					}
 				}
 				
@@ -7369,7 +7436,7 @@
 
 	//resize columns to fit
 	function fitColumns(columns, forced){
-		var totalWidth = this.table.rowManager.element.getBoundingClientRect().width; //table element width
+		var totalWidth = Helpers.getCorrectedDimensions(this.table.rowManager.element, "width"); //table element width
 		var fixedWidth = 0; //total width of columns with a defined width
 		var flexWidth = 0; //total width available to flexible columns
 		var flexGrowUnits = 0; //total number of widthGrow blocks across all columns
@@ -8460,6 +8527,7 @@
 			//clear DOM
 			while(element.firstChild) element.removeChild(element.firstChild);
 			element.classList.remove("tabulator");
+			element.removeAttribute("tabulator-layout");
 
 			this.externalEvents.dispatch("tableDestroyed");
 		}
@@ -24153,7 +24221,7 @@
 						enumerable: true,
 						configurable:true,
 						writable:true,
-						value: this.origFuncs.key,
+						value: this.origFuncs[key],
 					});
 				}
 			}
@@ -24941,7 +25009,7 @@
 		
 		initializeVisibilityObserver(){
 			this.visibilityObserver = new IntersectionObserver((entries) => {
-				this.visible = entries[0].isIntersecting;
+				this.visible = entries[entries.length - 1].isIntersecting;
 				
 				if(!this.initialized){
 					this.initialized = true;
@@ -26063,8 +26131,8 @@
 			this.right = 0;
 			
 			this.table = table;
-			this.start = {row:0, col:0};
-			this.end = {row:0, col:0};
+			this.start = {row:undefined, col:undefined};
+			this.end = {row:undefined, col:undefined};
 
 			if(this.rangeManager.rowHeader){
 				this.left = 1;
@@ -26995,13 +27063,15 @@
 		///////////////////////////////////
 		
 		keyNavigate(dir, e){
-			if(this.navigate(false, false, dir));
-			e.preventDefault();
+			if(this.navigate(false, false, dir)){
+				e.preventDefault();
+			}
 		}
 		
 		keyNavigateRange(e, dir, jump, expand){
-			if(this.navigate(jump, expand, dir));
-			e.preventDefault();
+			if(this.navigate(jump, expand, dir)){
+				e.preventDefault();
+			}
 		}
 		
 		navigate(jump, expand, dir) {
@@ -27095,10 +27165,10 @@
 			if (moved) {
 				row = this.getRowByRangePos(range.end.row);
 				column = this.getColumnByRangePos(range.end.col);
-				rowRect = row.getElement().getBoundingClientRect();
-				columnRect = column.getElement().getBoundingClientRect();
-				rowManagerRect = this.table.rowManager.getElement().getBoundingClientRect();
-				columnManagerRect = this.table.columnManager.getElement().getBoundingClientRect();
+				rowRect = Helpers.getCorrectedRect(row.getElement());
+				columnRect = Helpers.getCorrectedRect(column.getElement());
+				rowManagerRect = Helpers.getCorrectedRect(this.table.rowManager.getElement());
+				columnManagerRect = Helpers.getCorrectedRect(this.table.columnManager.getElement());
 				
 				if(!(rowRect.top >= rowManagerRect.top && rowRect.bottom <= rowManagerRect.bottom)){
 					if(row.getElement().parentNode && column.getElement().parentNode){
@@ -27119,9 +27189,8 @@
 				}
 
 				this.layoutElement();
-				
-				return true;
 			}
+			return true;
 		}
 		
 		rangeRemoved(removed){
@@ -27135,7 +27204,7 @@
 				}
 			}
 			
-			this.layoutElement();
+			this.layoutElement(true);
 		}
 		
 		findJumpRow(column, rows, reverse, emptyStart, emptySide){
@@ -27277,11 +27346,11 @@
 			}
 			
 			if (event.shiftKey) {
-				this.activeRange.setBounds(false, element);
+				this.activeRange.setBounds(false, element, true);
 			} else if (event.ctrlKey) {
-				this.addRange().setBounds(element);
+				this.addRange().setBounds(element, undefined, true);
 			} else {
-				this.resetRanges().setBounds(element);
+				this.resetRanges().setBounds(element, undefined, true);
 			}
 		}
 		

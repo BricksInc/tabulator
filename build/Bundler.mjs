@@ -44,6 +44,24 @@ export default class Bundler{
 
 		return ignoredCircularFiles.some(file => warn.importer.includes(file));
 	}
+
+	_getEOLPlugin(){
+		return {
+			name: 'eol-plugin',
+			generateBundle(options, bundle) {
+				for (const fileName in bundle) {
+					if (bundle[fileName].type === 'asset' || bundle[fileName].type === 'chunk') {
+						if (bundle[fileName].code) {
+							bundle[fileName].code = bundle[fileName].code.replace(/\r\n/g, '\n');
+						}
+						if (bundle[fileName].source && typeof bundle[fileName].source === 'string') {
+							bundle[fileName].source = bundle[fileName].source.replace(/\r\n/g, '\n');
+						}
+					}
+				}
+			}
+		};
+	}
 	
 	bundle(){
 		if(this.env){
@@ -59,25 +77,25 @@ export default class Bundler{
 		console.log("Building Dev Package Bundles: ", env);
 		switch(env){
 			case "css":
-			this.bundleCSS(false);
-			break;
+				this.bundleCSS(false);
+				break;
 			
 			case "esm":
-			this.bundleESM(false);
-			break;
+				this.bundleESM(false);
+				break;
 			
 			case "umd":
-			this.bundleUMD(false);
-			break;
+				this.bundleUMD(false);
+				break;
 			
 			case "wrappers":
-			this.buildWrappers();
-			break;
+				this.buildWrappers();
+				break;
 			
 			default:
-			this.bundleCSS(false);
-			this.bundleESM(false);
-			break;
+				this.bundleCSS(false);
+				this.bundleESM(false);
+				break;
 		}
 	}
 	
@@ -110,7 +128,9 @@ export default class Bundler{
 		var builds = ["jquery_wrapper.js"];
 		
 		builds.forEach((build) => {
-			fs.copySync("./src/js/builds/" + build, "./dist/js/" + build);
+			let content = fs.readFileSync("./src/js/builds/" + build, "utf8");
+			content = content.replace(/\r\n/g, '\n');
+			fs.outputFileSync("./dist/js/" + build, content);
 		});
 	}
 	
@@ -134,6 +154,7 @@ export default class Bundler{
 						sourceMap: true,
 						plugins: [require('postcss-prettify')]
 					}),
+					this._getEOLPlugin(),
 				],
 				onwarn:this._suppressUnnecessaryWarnings.bind(this),
 			};
@@ -152,6 +173,7 @@ export default class Bundler{
 						content:this.version,
 					},
 				}),
+				this._getEOLPlugin(),
 			],
 			output: [
 				{
@@ -183,6 +205,7 @@ export default class Bundler{
 						content:this.version,
 					},
 				}),
+				this._getEOLPlugin(),
 			],
 			output: {
 				file: "dist/js/tabulator" + (minify ? ".min" : "") + ".js",
