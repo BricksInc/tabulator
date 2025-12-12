@@ -1,4 +1,5 @@
 import Module from '../../core/Module.js';
+import Helpers from '../../core/tools/Helpers.js';
 
 export default class ResizeColumns extends Module{
 
@@ -217,8 +218,8 @@ export default class ResizeColumns extends Module{
 	
 	resize(e, column){
 		var x = typeof e.clientX === "undefined" ? e.touches[0].clientX : e.clientX,
-		startDiff = x - this.startX,
-		moveDiff = x - this.latestX,
+		startDiff = (x - this.startX) / this.scaleX,
+		moveDiff = (x - this.latestX) / this.scaleX,
 		blockedBefore, blockedAfter;
 
 		this.latestX = x;
@@ -264,7 +265,7 @@ export default class ResizeColumns extends Module{
 		handleX = handle.getBoundingClientRect().x - this.table.element.getBoundingClientRect().x,
 		tableX = this.table.element.getBoundingClientRect().x,
 		columnX = column.element.getBoundingClientRect().left - tableX,
-		mouseDiff = mouseX - this.startX,
+		mouseDiff = (mouseX - this.startX) / this.scaleX,
 		pos = Math.max(handleX + mouseDiff, columnX + column.minWidth);
 
 		if(column.maxWidth){
@@ -344,6 +345,9 @@ export default class ResizeColumns extends Module{
 		self.startX = typeof e.clientX === "undefined" ? e.touches[0].clientX : e.clientX;
 		self.latestX = self.startX;
 		self.startWidth = column.getWidth();
+
+		var scaleFactors = Helpers.getTransformScaleFactors(this.table.element);
+		self.scaleX = scaleFactors.x || 1;
 		
 		document.body.addEventListener("mousemove", mouseMove);
 		document.body.addEventListener("mouseup", mouseUp);
