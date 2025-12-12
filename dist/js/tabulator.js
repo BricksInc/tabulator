@@ -24623,8 +24623,8 @@
 		
 		resize(e, column){
 			var x = typeof e.clientX === "undefined" ? e.touches[0].clientX : e.clientX,
-			startDiff = x - this.startX,
-			moveDiff = x - this.latestX,
+			startDiff = (x - this.startX) / this.scaleX,
+			moveDiff = (x - this.latestX) / this.scaleX,
 			blockedBefore, blockedAfter;
 
 			this.latestX = x;
@@ -24670,7 +24670,7 @@
 			handleX = handle.getBoundingClientRect().x - this.table.element.getBoundingClientRect().x,
 			tableX = this.table.element.getBoundingClientRect().x,
 			columnX = column.element.getBoundingClientRect().left - tableX,
-			mouseDiff = mouseX - this.startX,
+			mouseDiff = (mouseX - this.startX) / this.scaleX,
 			pos = Math.max(handleX + mouseDiff, columnX + column.minWidth);
 
 			if(column.maxWidth){
@@ -24750,6 +24750,9 @@
 			self.startX = typeof e.clientX === "undefined" ? e.touches[0].clientX : e.clientX;
 			self.latestX = self.startX;
 			self.startWidth = column.getWidth();
+
+			var scaleFactors = Helpers.getTransformScaleFactors(this.table.element);
+			self.scaleX = scaleFactors.x || 1;
 			
 			document.body.addEventListener("mousemove", mouseMove);
 			document.body.addEventListener("mouseup", mouseUp);
@@ -24824,7 +24827,7 @@
 		}
 
 		resize(e, row) {
-			row.setHeight(this.startHeight + ((typeof e.screenY === "undefined" ? e.touches[0].screenY : e.screenY) - this.startY));
+			row.setHeight(this.startHeight + ((typeof e.screenY === "undefined" ? e.touches[0].screenY : e.screenY) - this.startY) / this.scaleY);
 		}
 
 		calcGuidePosition(e, row, handle) {
@@ -24832,7 +24835,7 @@
 			handleY = handle.getBoundingClientRect().y - this.table.element.getBoundingClientRect().y,
 			tableY = this.table.element.getBoundingClientRect().y,
 			rowY = row.element.getBoundingClientRect().top - tableY,
-			mouseDiff = mouseY - this.startY;
+			mouseDiff = (mouseY - this.startY) / this.scaleY;
 
 			return Math.max(handleY + mouseDiff, rowY);
 		}
@@ -24893,6 +24896,9 @@
 
 			self.startY = typeof e.screenY === "undefined" ? e.touches[0].screenY : e.screenY;
 			self.startHeight = row.getHeight();
+
+			var scaleFactors = Helpers.getTransformScaleFactors(this.table.element);
+			self.scaleY = scaleFactors.y || 1;
 
 			document.body.addEventListener("mousemove", mouseMove);
 			document.body.addEventListener("mouseup", mouseUp);

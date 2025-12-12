@@ -1,4 +1,5 @@
 import Module from '../../core/Module.js';
+import Helpers from '../../core/tools/Helpers.js';
 
 export default class ResizeRows extends Module{
 
@@ -66,7 +67,7 @@ export default class ResizeRows extends Module{
 	}
 
 	resize(e, row) {
-		row.setHeight(this.startHeight + ((typeof e.screenY === "undefined" ? e.touches[0].screenY : e.screenY) - this.startY));
+		row.setHeight(this.startHeight + ((typeof e.screenY === "undefined" ? e.touches[0].screenY : e.screenY) - this.startY) / this.scaleY);
 	}
 
 	calcGuidePosition(e, row, handle) {
@@ -74,7 +75,7 @@ export default class ResizeRows extends Module{
 		handleY = handle.getBoundingClientRect().y - this.table.element.getBoundingClientRect().y,
 		tableY = this.table.element.getBoundingClientRect().y,
 		rowY = row.element.getBoundingClientRect().top - tableY,
-		mouseDiff = mouseY - this.startY;
+		mouseDiff = (mouseY - this.startY) / this.scaleY;
 
 		return Math.max(handleY + mouseDiff, rowY);
 	}
@@ -135,6 +136,9 @@ export default class ResizeRows extends Module{
 
 		self.startY = typeof e.screenY === "undefined" ? e.touches[0].screenY : e.screenY;
 		self.startHeight = row.getHeight();
+
+		var scaleFactors = Helpers.getTransformScaleFactors(this.table.element);
+		self.scaleY = scaleFactors.y || 1;
 
 		document.body.addEventListener("mousemove", mouseMove);
 		document.body.addEventListener("mouseup", mouseUp);
