@@ -141,18 +141,26 @@ export default class ResizeTable extends Module{
 	clearBindings(){
 		if(this.binding){
 			window.removeEventListener("resize", this.binding);
+			this.binding = false;
 		}
-		
+
+		// Use disconnect (not unobserve) so the observer instance itself becomes GC-eligible.
+		// unobserve keeps the observer alive, and its callback closure retains `this.table`
+		// (the Tabulator) and `table.element` (the DOM root), pinning the entire DOM subtree
+		// across component unmounts.
 		if(this.resizeObserver){
-			this.resizeObserver.unobserve(this.table.element);
+			this.resizeObserver.disconnect();
+			this.resizeObserver = false;
 		}
-		
+
 		if(this.visibilityObserver){
-			this.visibilityObserver.unobserve(this.table.element);
+			this.visibilityObserver.disconnect();
+			this.visibilityObserver = false;
 		}
-		
+
 		if(this.containerObserver){
-			this.containerObserver.unobserve(this.table.element.parentNode);
+			this.containerObserver.disconnect();
+			this.containerObserver = false;
 		}
 	}
 }
