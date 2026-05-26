@@ -24316,8 +24316,9 @@ class ColumnManager extends CoreFeature {
 		
 		this.redrawBlock = false; //prevent redraws to allow multiple data manipulations before continuing
 		this.redrawBlockUpdate = null; //store latest redraw update only status
-		
+
 		this.renderer = null;
+		this.wheelHandler = null;
 	}
 	
 	////////////// Setup Functions /////////////////
@@ -24336,6 +24337,7 @@ class ColumnManager extends CoreFeature {
 		
 		this.subscribe("scroll-horizontal", this.scrollHorizontal.bind(this));
 		this.subscribe("scrollbar-vertical", this.padVerticalScrollbar.bind(this));
+		this.subscribe("table-destroy", this.destroy.bind(this));
 	}
 	
 	padVerticalScrollbar(width){
@@ -24426,16 +24428,34 @@ class ColumnManager extends CoreFeature {
 	}
 	
 	initializeScrollWheelWatcher(){
-		this.contentsElement.addEventListener("wheel", (e) => {
+		this.wheelHandler = (e) => {
 			var left;
-			
+
 			if(e.deltaX){
 				left = this.contentsElement.scrollLeft + e.deltaX;
-				
+
 				this.table.rowManager.scrollHorizontal(left);
 				this.table.columnManager.scrollHorizontal(left);
 			}
-		});
+		};
+
+		this.contentsElement.addEventListener("wheel", this.wheelHandler);
+	}
+
+	destroy(){
+		if(this.contentsElement && this.wheelHandler){
+			this.contentsElement.removeEventListener("wheel", this.wheelHandler);
+		}
+
+		this.wheelHandler = null;
+		this.contentsElement = null;
+		this.headersElement = null;
+		this.element = null;
+		this.rowHeader = null;
+		this.columns = [];
+		this.columnsByIndex = [];
+		this.columnsByField = {};
+		this.renderer = null;
 	}
 	
 	///////////// Column Setup Functions /////////////
